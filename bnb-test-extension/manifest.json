@@ -1,0 +1,13 @@
+{
+  "name": "Binance Realtime Sniffer",
+  "version": "1.0",
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "permissions": [
+    "debugger",
+    "tabs"
+  ],
+  "host_permissions": ["*://p2p.binance.com/*"]
+}
