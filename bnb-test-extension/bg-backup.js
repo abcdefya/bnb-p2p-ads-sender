@@ -31,9 +31,7 @@ chrome.debugger.onEvent.addListener((debuggee, method, params) => {
   );
 });
 
-// =========================
-// 🔌 WebSocket Client
-// =========================
+
 let ws = null;
 let retryTimeout = 2000;
 
@@ -60,9 +58,6 @@ function connectWebSocket() {
 connectWebSocket();
 
 
-// ========================================================================
-// ⬇️  Hook vào chỗ bạn đã bắt được response Binance trong Network.getResponseBody
-// ========================================================================
 chrome.debugger.onEvent.addListener((debuggee, method, params) => {
   if (method !== "Network.responseReceived") return;
 

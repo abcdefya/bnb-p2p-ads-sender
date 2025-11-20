@@ -1,8 +1,5 @@
 console.log("🔥 Binance Sniffer Background Loaded");
 
-// =========================================================
-// 1) GẮN DEBUGGER VÀ BẮT RESPONSE TỪ BINANCE
-// =========================================================
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   if (info.status !== "complete") return;
   if (!tab.url.includes("p2p.binance.com")) return;
@@ -34,7 +31,6 @@ chrome.debugger.onEvent.addListener((debuggee, method, params) => {
       try {
         const json = JSON.parse(body.body);
 
-        // 🔥 Gửi lên WebSocket server
         if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(
             JSON.stringify({
@@ -54,9 +50,6 @@ chrome.debugger.onEvent.addListener((debuggee, method, params) => {
 });
 
 
-// =========================================================
-// 2) WEBSOCKET CLIENT (AUTO RECONNECT + SEND DATA)
-// =========================================================
 let ws = null;
 let retryTimeout = 2000;
 
@@ -84,9 +77,8 @@ function connectWebSocket() {
 
   ws.onmessage = (msg) => {
     console.log("📥 Received from WS:", msg.data);
-    // nếu cần phản hồi ngược lại extension thì xử lý tại đây
+
   };
 }
 
-// BẮT ĐẦU KẾT NỐI
 connectWebSocket();
