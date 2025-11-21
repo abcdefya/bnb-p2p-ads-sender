@@ -36,7 +36,6 @@ chrome.webRequest.onCompleted.addListener(
     try {
       const responseBody = await new Promise((resolve) => {
         chrome.webRequest.getSecurityInfo(details.requestId, { rawDER: true }, () => {
-          // Tiếp tục đọc body
           fetch(details.url, { method: details.method })
             .then((r) => r.json())
             .then(resolve)
