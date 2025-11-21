@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Binance P2P Response Sniffer",
+  "version": "1.0",
+  "permissions": ["debugger", "activeTab", "scripting"],
+  "host_permissions": ["https://p2p.binance.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

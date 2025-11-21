@@ -1,0 +1,9 @@
+{
+  "name": "com.mybinance.host",  
+  "description": "Native host for Binance extension",  
+  "path": "D:\\Working\\bnb-p2p-ads-sender\\server\\native-host.js", 
+  "type": "stdio",  
+  "allowed_origins": [
+    "chrome-extension://pfidjibenhkbnmllhgggkbfkjbgedajc/" 
+  ]
+}
