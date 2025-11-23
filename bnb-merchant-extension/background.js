@@ -1,21 +1,37 @@
-console.log("🔥 Background Binance Producer Loaded");
 
+// IMPORT MODULE EXCHANGE RATE
+import {
+  setupHeaderCapture,
+  fetchExchangeRate,
+  GLOBAL_EXCHANGE_RATE
+} from "./exchangeRate.js";
+
+console.log("🔥 Merchant Background Loaded");
+
+// GLOBAL STORAGE FOR BUY/SELL ADS
+let GLOBAL_ADS = {
+  BUY: { TradeType: "BUY", Ads: {} },
+  SELL: { TradeType: "SELL", Ads: {} }
+};
+
+
+// CONNECT TO WEBSOCKET SERVER
 let ws = null;
 let retryTimeout = 2000;
 
 function connectWebSocket() {
-  console.log("🔌 Connecting WebSocket...");
+  console.log("🔌 Connecting to WS server...");
   ws = new WebSocket("ws://localhost:3000");
 
   ws.onopen = () => {
     console.log("🟢 WS Connected");
-    retryTimeout = 2000; // reset backoff
+    retryTimeout = 2000;
   };
 
   ws.onclose = () => {
-    console.log("🔴 WS Closed — reconnecting...");
+    console.log("🔴 WS Disconnected — reconnecting...");
     setTimeout(connectWebSocket, retryTimeout);
-    retryTimeout = Math.min(30000, retryTimeout * 2); // exponential backoff
+    retryTimeout = Math.min(30000, retryTimeout * 2);
   };
 
   ws.onerror = (err) => {
@@ -23,41 +39,53 @@ function connectWebSocket() {
     ws.close();
   };
 
-  ws.onmessage = (msg) => {
-    console.log("📥 WS Server says:", msg.data);
+
+  // WS RECEIVES NEW BUY/SELL DATA
+  ws.onmessage = async (msg) => {
+    let payload;
+    try {
+      payload = JSON.parse(msg.data);
+    } catch (err) {
+      console.error("❌ WS JSON parse error:", err);
+      return;
+    }
+
+    const tradeType = payload.tradeType;
+    const ads = payload.ads;
+
+    if (!tradeType || !Array.isArray(ads)) {
+      console.warn("⚠️ WS payload invalid:", payload);
+      return;
+    }
+
+    // STRUCTURE: Merchant → Price
+    const adsObject = {};
+    for (const item of ads) {
+      adsObject[item.merchant] = item.price;
+    }
+
+    GLOBAL_ADS[tradeType] = {
+      TradeType: tradeType,
+      Ads: adsObject
+    };
+
+    // Log BUY/SELL ADS
+    console.log(`🔥 UPDATED GLOBAL ${tradeType}:`);
+    Object.entries(GLOBAL_ADS[tradeType].Ads).forEach(([merchant, price]) => {
+      console.log(`${merchant} - ${price}`);
+    });
+
+
+    // FETCH NEW EXCHANGE RATE (AUTO)
+    await fetchExchangeRate();
+
+    console.log("💰 GLOBAL_EXCHANGE_RATE (VND/USDT):", GLOBAL_EXCHANGE_RATE);
   };
 }
 
 connectWebSocket();
 
+// ENABLE HEADER CAPTURE FOR RATE API
+setupHeaderCapture();
 
-chrome.webRequest.onCompleted.addListener(
-  async (details) => {
-    try {
-      const responseBody = await new Promise((resolve) => {
-        chrome.webRequest.getSecurityInfo(details.requestId, { rawDER: true }, () => {
-          fetch(details.url, { method: details.method })
-            .then((r) => r.json())
-            .then(resolve)
-            .catch(() => resolve(null));
-        });
-      });
-
-      if (!responseBody) return;
-
-      console.log("📦 Binance Response:", responseBody);
-
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "update", payload: responseBody }));
-        console.log("📤 Sent to WS");
-      } else {
-        console.log("⚠️ WS not ready");
-      }
-    } catch (err) {
-      console.error("❌ Error parsing Binance response:", err);
-    }
-  },
-  {
-    urls: ["*://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search*"],
-  }
-);
+console.log("✨ Merchant Background Initialized.");
