@@ -1,12 +1,22 @@
-(function() {
-  const ws = new WebSocket('ws://localhost:3000');
-  ws.onopen = () => console.log('Connected to server');
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log('Received data:', data);
-    localStorage.setItem('binance_ads', JSON.stringify(data));
+// content.js
+console.log("⚡ Content script loaded!");
 
-  };
-  ws.onerror = (err) => console.error('WS error:', err);
-  ws.onclose = () => console.log('WS closed');
-})();
+// Quick-update module (existing)
+import("./injectQuickUpdate.js")
+  .then((module) => {
+    module.injectQuickUpdateModule();
+    console.log("💊 injectQuickUpdateModule initialized");
+  })
+  .catch((err) => {
+    console.error("Failed to load injectQuickUpdateModule:", err);
+  });
+
+// Edit-details module (merged quickEditListener + injectEditDetails)
+import("./quickEditListener.js")
+  .then((module) => {
+    module.injectEditModule();
+    console.log("🧩 injectEditModule (quickEdit + Giá mới) initialized");
+  })
+  .catch((err) => {
+    console.error("Failed to load injectEditModule:", err);
+  });
