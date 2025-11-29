@@ -3,7 +3,9 @@
 import {
   setupHeaderCapture,
   fetchExchangeRate,
-  GLOBAL_EXCHANGE_RATE
+  fetchBalance,
+  GLOBAL_EXCHANGE_RATE,
+  GLOBAL_BALANCE
 } from "./exchangeRate.js";
 
 console.log("🔥 Merchant Background Loaded");
@@ -80,6 +82,17 @@ function connectWebSocket() {
     await fetchExchangeRate();
 
     console.log("💰 GLOBAL_EXCHANGE_RATE (VND/USDT):", GLOBAL_EXCHANGE_RATE);
+
+    // FETCH BALANCE (AUTO)
+    await fetchBalance();
+
+    if (GLOBAL_BALANCE) {
+      console.log("💰 USDT Balance:");
+      console.log(`   Free: ${GLOBAL_BALANCE.free} USDT`);
+      console.log(`   Freeze: ${GLOBAL_BALANCE.freeze} USDT`);
+      console.log(`   Order: ${GLOBAL_BALANCE.order} USDT`);
+      console.log(`   Total: ${GLOBAL_BALANCE.total} USDT`);
+    }
   };
 }
 
