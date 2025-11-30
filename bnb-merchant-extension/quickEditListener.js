@@ -1,6 +1,7 @@
 // quickEditListener.js
 // Biến "Ad price" trong expanded row thành ô input "Giá USDT mới"
-// và log rowId & giá mới khi bấm Save
+// và gửi rowId + giá mới về background khi bấm Save,
+// sau đó cập nhật lại giá hiển thị ở row ngoài bảng theo giá mới từ API.
 
 export function injectEditModule() {
   console.log("[ext] injectEditModule (Ad price → input) initialized");
@@ -75,15 +76,83 @@ export function injectEditModule() {
       "click",
       function () {
         const giaMoiInput = form.querySelector('input[data-usdt-new="1"]');
-        const giaMoi = giaMoiInput ? giaMoiInput.value : null;
+        const giaMoiStr = giaMoiInput ? giaMoiInput.value : null;
+        const giaMoi = giaMoiStr ? parseFloat(giaMoiStr) : null;
+
         console.log("[ext] SAVE clicked (quickEdit):", { rowId, giaMoi });
 
-        // Nếu muốn gửi về background:
-        // chrome.runtime.sendMessage({
-        //   type: "quickEditSave",
-        //   rowId,
-        //   giaMoi
-        // });
+        if (!rowId || !giaMoi || Number.isNaN(giaMoi)) {
+          console.warn(
+            "[ext] rowId hoặc giá mới không hợp lệ → bỏ qua gửi background"
+          );
+          return;
+        }
+
+        // Gửi lên background để tính priceFloatingRatio, updateAd, rồi getDetailByNo
+        chrome.runtime.sendMessage(
+          {
+            type: "quickEditSave",
+            rowId,
+            newPrice: giaMoi
+          },
+          (response) => {
+            if (!response || !response.ok) {
+              console.warn("[ext] quickEditSave failed:", response);
+              return;
+            }
+
+            const { latestPrice } = response;
+
+            // Nếu background trả về latestPrice, dùng nó; nếu không thì fallback dùng giá user nhập
+            const finalPrice =
+              latestPrice !== null &&
+              latestPrice !== undefined &&
+              !Number.isNaN(latestPrice)
+                ? Number(latestPrice)
+                : giaMoi;
+
+            // Format giống UI: 22,341.00
+            const displayPrice = finalPrice.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+
+            // Tìm lại row ngoài bảng (level-0) theo data-row-key
+            const topRow =
+              parentRow ||
+              document.querySelector(
+                `tr.bn-web-table-row[data-row-key="${rowId}"]`
+              );
+
+            if (!topRow) {
+              console.warn(
+                "[ext] Không tìm thấy row hiển thị cho adv:",
+                rowId
+              );
+              return;
+            }
+
+            // Cột giá chính là td[aria-colindex="4"] .body4.text-primaryText
+            const priceSpan = topRow.querySelector(
+              'td[aria-colindex="4"] .body4.text-primaryText'
+            );
+
+            if (priceSpan) {
+              console.log(
+                "[ext] Updating displayed price in table row:",
+                priceSpan.textContent,
+                "→",
+                displayPrice
+              );
+              priceSpan.textContent = displayPrice;
+            } else {
+              console.warn(
+                "[ext] Không tìm thấy .body4.text-primaryText trong cột giá của row",
+                rowId
+              );
+            }
+          }
+        );
       },
       true // capture để chạy ngay cả khi Binance chặn bubble
     );
@@ -108,7 +177,7 @@ export function injectEditModule() {
     .querySelectorAll("tr.bn-web-table-expanded-row")
     .forEach(transformAdPrice);
 
-  // Observer: dùng cả m.target + addedNodes (giống đoạn V2 bạn test trực tiếp)
+  // Observer: dùng cả m.target + addedNodes để bắt mọi re-render trong expanded row
   const observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
       if (m.target) {
@@ -120,7 +189,7 @@ export function injectEditModule() {
 
   observer.observe(document.body, {
     childList: true,
-    subtree: true,
+    subtree: true
   });
 
   // Fallback: mỗi lần click "Edit details" thì ép transform lại

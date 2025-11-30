@@ -1,17 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Binance Merchant Extension",
-  "version": "1.0",
+  "version": "1.0.0",
 
   "permissions": [
     "storage",
     "webRequest",
-    "webRequestBlocking",
     "alarms"
   ],
 
   "host_permissions": [
-    "https://c2c-admin.binance.com/*"
+    "https://c2c-admin.binance.com/*",
+    "https://api.binance.com/*"
   ],
 
   "background": {
@@ -31,7 +31,7 @@
     {
       "resources": [
         "injectQuickUpdate.js",
-        "quickEditListener.js" 
+        "quickEditListener.js"
       ],
       "matches": ["https://c2c-admin.binance.com/*"]
     }

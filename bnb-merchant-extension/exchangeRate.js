@@ -1,13 +1,12 @@
-
 // exchangeRate.js
 const TARGET_API =
   "https://c2c-admin.binance.com/bapi/c2c/v1/private/c2c/merchant/get-exchange-rate-list";
 
-const BALANCE_API = 
+const BALANCE_API =
   "https://c2c-admin.binance.com/bapi/c2c/v1/private/c2c/asset/balance";
 
 let CAPTURED_HEADERS = {};
-export let GLOBAL_EXCHANGE_RATE = 0;   // VND / USD
+export let GLOBAL_EXCHANGE_RATE = 0;   // VND / USDT
 export let GLOBAL_BALANCE = null;      // User balance data
 
 // 1. Capture headers once
@@ -18,7 +17,7 @@ export function setupHeaderCapture() {
 
       const headerMap = {};
 
-      for (const h of details.requestHeaders) {
+      for (const h of details.requestHeaders || []) {
         const key = h.name.toLowerCase();
 
         if (
@@ -49,6 +48,45 @@ export function setupHeaderCapture() {
   );
 }
 
+// 2. Fetch Exchange Rate API
+// export async function fetchExchangeRate() {
+//   const stored = await chrome.storage.local.get({ exchange_headers: null });
+//   const headers = stored.exchange_headers;
+
+//   if (!headers) {
+//     console.warn("⚠️ Exchange headers not captured yet!");
+//     return null;
+//   }
+
+//   try {
+//     const res = await fetch(TARGET_API, {
+//       method: "GET",
+//       headers
+//     });
+
+//     const data = await res.json();
+
+//     const vndRow = data?.data?.find(
+//       (row) => row.fiatCurrency === "VND" && row.againstCurrency === "USD"
+//     );
+
+//     if (!vndRow) {
+//       console.warn("⚠️ Cannot extract VND/USD rate:", data);
+//       return null;
+//     }
+
+//     const rate = parseFloat(vndRow.customExRate || vndRow.exchangeRate);
+
+//     GLOBAL_EXCHANGE_RATE = rate;
+
+//     console.log("💰 Updated Exchange Rate (VND/USDT):", GLOBAL_EXCHANGE_RATE);
+
+//     return rate;
+//   } catch (err) {
+//     console.error("❌ Exchange rate fetch error:", err);
+//     return null;
+//   }
+// }
 
 // 2. Fetch Exchange Rate API
 export async function fetchExchangeRate() {
@@ -69,7 +107,7 @@ export async function fetchExchangeRate() {
     const data = await res.json();
 
     const vndRow = data?.data?.find(
-      row => row.fiatCurrency === "VND" && row.againstCurrency === "USD"
+      (row) => row.fiatCurrency === "VND" && row.againstCurrency === "USD"
     );
 
     if (!vndRow) {
@@ -77,12 +115,15 @@ export async function fetchExchangeRate() {
       return null;
     }
 
-    const rate = parseFloat(vndRow.customExRate || vndRow.exchangeRate);
+    // 👉 Lấy rate gốc
+    const rawRate = parseFloat(vndRow.exchangeRate || vndRow.customExRate);
+    // 👉 Làm tròn 2 số thập phân
+    const rate = Number(rawRate.toFixed(2));
 
     GLOBAL_EXCHANGE_RATE = rate;
 
     console.log("💰 Updated Exchange Rate (VND/USDT):", GLOBAL_EXCHANGE_RATE);
-
+    console.log("Raw rate: ", Number(rawRate));
     return rate;
   } catch (err) {
     console.error("❌ Exchange rate fetch error:", err);
@@ -91,7 +132,7 @@ export async function fetchExchangeRate() {
 }
 
 
-// 3. Fetch Balance API
+// 3. Fetch balance
 export async function fetchBalance() {
   const stored = await chrome.storage.local.get({ exchange_headers: null });
   const headers = stored.exchange_headers;
@@ -114,20 +155,22 @@ export async function fetchBalance() {
       return null;
     }
 
-    // Extract USDT balance only
-    const usdtBalance = data.data.find(item => item.asset === "USDT");
+    // Chỉ lấy USDT
+    const usdtBalance = data.data.find((item) => item.asset === "USDT");
 
     if (!usdtBalance) {
       console.warn("⚠️ Cannot find USDT in balance data");
       return null;
     }
 
-    // Store balance info
     GLOBAL_BALANCE = {
       free: parseFloat(usdtBalance.free),
       freeze: parseFloat(usdtBalance.freeze),
       order: parseFloat(usdtBalance.order),
-      total: parseFloat(usdtBalance.free) + parseFloat(usdtBalance.freeze) + parseFloat(usdtBalance.order)
+      total:
+        parseFloat(usdtBalance.free) +
+        parseFloat(usdtBalance.freeze) +
+        parseFloat(usdtBalance.order)
     };
 
     console.log("💰 Updated USDT Balance:", GLOBAL_BALANCE);
